@@ -1,0 +1,10 @@
+{
+  "dbconf": {
+    "host": "localhost",
+    "port": 5432,
+    "user": "coinmarket",
+    "password": "coinmarket",
+    "db": "coinmarket",
+    "timeout": 5
+  }
+}
