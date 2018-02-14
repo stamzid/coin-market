@@ -1,5 +1,6 @@
 import unittest
 import json
+import datetime
 from coinmarket.application_sql import *
 from coinmarket.models import CoinLogger, DBConfig
 
@@ -22,7 +23,9 @@ class TestApplicationSql(unittest.TestCase):
             "ticker": test_ticker,
             "name": "Bitcoin",
             "market_cap": 1234567889,
-            "last_update": current_date
+            "last_update": current_date,
+            "slug": "bitcoin",
+            "rank": 1
         }
         
         app_sql.insert_currency_status(status_dict)
@@ -32,9 +35,10 @@ class TestApplicationSql(unittest.TestCase):
         
         updated_time = datetime.datetime.now()
         status_dict["last_update"] = updated_time
-        app_sql.update_currency_status(test_ticker, updated_time)
+        app_sql.update_currency_status(test_ticker, updated_time, 2)
         status = app_sql.get_currency_status(test_ticker)
         self.assertEqual(status["last_update"], updated_time, "Status should be updated")
+        self.assertEqual(status["rank"], 2, "rank should be updated")
         app_sql.delete_currency_status(test_ticker)
         status = app_sql.get_currency_status(test_ticker)
         self.assertEqual(status, {}, "It should return empty dictionary after deletion")

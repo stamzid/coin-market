@@ -4,7 +4,10 @@
     "port": 5432,
     "user": "coinmarket",
     "password": "coinmarket",
-    "db": "coinmarket",
-    "timeout": 5
+    "db": "coinmarket"
+  },
+  "data_parse": {
+    "type": "select",
+    "tickers": ["BTC"]
   }
 }
