@@ -79,9 +79,9 @@ def trade_data_processor(coin_parser, coin_dict, logger):
         logger.info("Checking if ticker already existed in the db")
         latest_date = coin_parser.check_latest_date(coin_dict["symbol"], RAW_TABLE)
         logger.info("Latest date list: " + str(latest_date))
+        start = latest_date[0]["close"] + datetime.timedelta(days=1)
+        start_str = start.strftime("%Y%m%d")
         try:
-            start = latest_date[0]["close"] + datetime.timedelta(days=1)
-            start_str = start.strftime("%Y%m%d")
             logger.info("Adding data starting from date: "+str(start))
             hist_trade_data = coin_parser.parse_historical_range(coin_dict["slug"], coin_dict["symbol"], start_str,
                                                                  GLOBAL_END)
@@ -94,6 +94,7 @@ def trade_data_processor(coin_parser, coin_dict, logger):
             coin_parser.delete_historical(coin_dict["symbol"], ROLLING_TABLE)
             coin_parser.delete_historical(coin_dict["symbol"], RETURN_TABLE)
 
+            logger.info("Calculating Statistic")
             coin_statistics = CoinStatistics(data_frame, coin_dict["symbol"], logger)
             rolling_frame = coin_statistics.historical_rolling_stats()
             returns = coin_statistics.rolling_returns()
@@ -112,7 +113,8 @@ def trade_data_processor(coin_parser, coin_dict, logger):
         
         coin_parser.delete_historical(coin_dict["symbol"], ROLLING_TABLE)
         coin_parser.delete_historical(coin_dict["symbol"], RETURN_TABLE)
-        
+
+        logger.info("Calculating Statistic")
         coin_statistics = CoinStatistics(data_frame, coin_dict["symbol"], logger)
         rolling_frame = coin_statistics.historical_rolling_stats()
         returns = coin_statistics.rolling_returns()
