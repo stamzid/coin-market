@@ -10,18 +10,21 @@ import pandas as pd
 import datetime
 
 
-GLOBAL_START = "20170101"
+GLOBAL_START = "20130428"
 GLOBAL_END = datetime.datetime.strftime(datetime.datetime.now(), "%Y%m%d")
 RAW_TABLE = "historical_trade_data"
 STATUS_TABLE = "currency_status"
 ROLLING_TABLE = "historical_rolling"
-RANK_TABLE  = "returns_ranking"
+TOP_TABLE = "top_ranking"
+BOTTOM_TABLE = "bottom_ranking"
 RETURN_TABLE = "period_return"
 
 historical_header = ["ticker", "close_date", "day_open", "daily_high", "daily_low", "day_close", "volume_trade"]
 rolling_header = ["ticker", "close_date", "rsi", "std_dev"]
 period_header = ["ticker", "close_date", "period_return"]
-rank_header = ["close_date, gainers, losers"]
+top_header = ["close_date", "gainers", "returns"]
+bottom_header = ["close_date", "losers", "returns"]
+top_n = 5
 
 
 def url_data_provider(page_url):
@@ -79,6 +82,35 @@ def trade_data_processor(coin_parser, coin_dict, logger):
     coin_parser.add_historical(returns.T.to_dict().values(), "temp_returns.csv", RETURN_TABLE, period_header)
 
 
+def top_list_builder(cursor_rows):
+    
+    rank_list = []
+    for row in cursor_rows:
+        arg = {
+            "close_date": row["date"],
+            "gainers": row["ticker"],
+            "returns": row["return"]
+        }
+        
+        rank_list.append(arg)
+        
+    return rank_list
+
+
+def bottom_list_builder(cursor_rows):
+    rank_list = []
+    for row in cursor_rows:
+        arg = {
+            "close_date": row["date"],
+            "losers": row["ticker"],
+            "returns": row["return"]
+        }
+        
+        rank_list.append(arg)
+    
+    return rank_list
+
+
 def module_runner(config, coin_list, logger):
     
     summary_url = "https://api.coinmarketcap.com/v1/ticker/"
@@ -92,16 +124,16 @@ def module_runner(config, coin_list, logger):
     db_config = DBConfig(db_host, db_name, db_user, db_pass, db_port)
     main_sql = ApplicationSql(db_config, logger)
     coin_parser = CoinMarketParser(main_sql, logger)
-    
+
     for coin_dict in coin_list:
-        
+
         try:
             ticker_summary = url_data_provider(summary_url + str(coin_dict["slug"]))[0]
         except IndexError as ie:
             logger.error(str(ie))
             logger.warn("skipping ticker: " + coin_dict["symbol"])
             continue
-        
+
         last_update = datetime.datetime.now()
         status_dict = {
             "ticker": coin_dict["symbol"],
@@ -113,6 +145,14 @@ def module_runner(config, coin_list, logger):
         }
         coin_parser.create_status(status_dict)
         trade_data_processor(coin_parser,  coin_dict, logger)
+
+    toprank = main_sql.get_top_ranking()
+    top_frame = pd.DataFrame(top_list_builder(toprank)).groupby('close_date').head(top_n)
+    bottomrank = main_sql.get_bottom_ranking()
+    bot_frame = pd.DataFrame(bottom_list_builder(bottomrank)).groupby('close_date').head(top_n)
+
+    main_sql.insert_historical_data(top_frame.T.to_dict().values(), "topranks.csv", TOP_TABLE, top_header)
+    main_sql.insert_historical_data(bot_frame.T.to_dict().values(), "botranks.csv", BOTTOM_TABLE, bottom_header)
     
     main_sql.close()
 

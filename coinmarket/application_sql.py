@@ -177,3 +177,44 @@ class ApplicationSql:
             self.conn.rollback()
             self.logger.error(str(e))
             return []
+        
+    def get_top_ranking(self):
+        
+        self.logger.info("Fetching Ranking")
+        try:
+            self.cursor.execute(""" SELECT close_date as date, ticker as ticker, period_return as return
+                FROM period_return
+                GROUP BY close_date, ticker
+                ORDER BY close_date, period_return desc;""")
+            return self.cursor.fetchall()
+        except psycopg2.Error as e:
+            self.conn.rollback()
+            self.logger.error("Error Fetching Top gainers")
+            return None
+
+    def get_bottom_ranking(self):
+    
+        self.logger.info("Fetching Ranking")
+        try:
+            self.cursor.execute(""" SELECT close_date as date, ticker as ticker, period_return as return
+                FROM period_return
+                GROUP BY close_date, ticker
+                ORDER BY close_date desc, period_return asc;""")
+            return self.cursor.fetchall()
+        except psycopg2.Error as e:
+            self.conn.rollback()
+            self.logger.error("Error Fetching Top gainers")
+            return None
+
+    def delete_from_rankings(self, table):
+        
+        self.logger.info("Deleting Ranking Table entries")
+        try:
+            self.cursor.execute("""DELETE FROM top_ranking;""")
+            self.conn.commit()
+            self.cursor.execute("""DELETE FROM bottom_ranking;""")
+            self.conn.commit()
+            self.logger.info("Successfully deleted")
+        except psycopg2.Error:
+            self.conn.rollback()
+            self.logger.error("Deletion of ranking failed")

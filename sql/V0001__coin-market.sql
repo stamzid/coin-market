@@ -46,11 +46,20 @@ create table period_return(
 
 create unique index period_return_idx on historical_trade_data(ticker, close_date);
 
-create table returns_ranking(
+create table top_ranking(
   close_date timestamp not null,
   gainers text references currency_status(coin_ticker),
-  losers text references currency_status(coin_ticker) ,
-  primary key (close_date, gainers, losers)
+  returns numeric,
+  primary key (close_date, gainers)
 );
 
-create unique index returns_rank_idx on returns_ranking(close_date, gainers, losers);
+create unique index top_rank_idx on top_ranking(close_date, gainers);
+
+create table bottom_ranking(
+  close_date timestamp not null,
+  losers text references currency_status(coin_ticker),
+  returns numeric,
+  primary key (close_date, losers)
+);
+
+create unique index bottom_rank_idx on bottom_ranking(close_date, losers);
