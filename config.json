@@ -8,6 +8,6 @@
   },
   "data_parse": {
     "type": "select",
-    "tickers": ["BTC"]
+    "tickers": ["BTC", "ETH", "XRP", "BCH", "NEO", "LTC", "ADA", "TRX"]
   }
 }

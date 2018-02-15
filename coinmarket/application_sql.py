@@ -19,8 +19,6 @@ class ApplicationSql:
         
         self.__currency_status = AsIs("currency_status")
         self.__historical_trade_data = AsIs("historical_trade_data")
-        self.__historical_header = ["ticker", "close_date", "day_open", "daily_high", "daily_low", "day_close", "volume_trade"]
-        self.__hist_table_name = "historical_trade_data"
         
         psydsn = "host={} dbname={} user={} password={} port={}".format(host, name, user, password, port)
         
@@ -30,7 +28,11 @@ class ApplicationSql:
             self.cursor = self.conn.cursor()
         except psycopg2.DatabaseError as e:
             self.logger.error(str(e))
-            
+     
+    def get_connection(self):
+        
+        return self.conn
+        
     def close(self):
         
         self.conn.close()
@@ -132,11 +134,11 @@ class ApplicationSql:
             self.conn.rollback()
             self.logger.error(str(e))
             
-    def insert_historical_data(self, data_row):
+    def insert_historical_data(self, data_row, temp_file, table, header):
     
-        file_path = os.path.join(os.getcwd(), "temp_hist.csv")
+        file_path = os.path.join(os.getcwd(), temp_file)
         w = open(file_path, "w")
-        out_writer = csv.DictWriter(w, fieldnames=self.__historical_header, delimiter='~', escapechar='\\', quoting=csv.QUOTE_NONE)
+        out_writer = csv.DictWriter(w, fieldnames=header, delimiter='~', escapechar='\\', quoting=csv.QUOTE_NONE)
         
         for row in data_row:
             out_writer.writerow(row)
@@ -145,7 +147,7 @@ class ApplicationSql:
 
         f = open(file_path, "rb")
         try:
-            self.cursor.copy_from(f, self.__hist_table_name, sep="~", columns=self.__historical_header)
+            self.cursor.copy_from(f, table, sep="~", columns=header)
             self.conn.commit()
         except Exception as e:
             self.conn.rollback()
@@ -154,9 +156,9 @@ class ApplicationSql:
         f.close()
         os.remove(file_path)
         
-    def delete_from_historical(self, ticker):
+    def delete_from_historical(self, ticker, table):
         
-        tab_arg = {"table": self.__historical_trade_data, "ticker": ticker}
+        tab_arg = {"table": AsIs(table), "ticker": ticker}
         try:
             self.cursor.execute("""DELETE FROM %(table)s where ticker=%(ticker)s;""", tab_arg)
             self.conn.commit()

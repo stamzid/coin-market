@@ -35,8 +35,7 @@ class CoinMarketParser:
                 value = float(stripped)
             else:
                 value = int(stripped)
-        except ValueError as v:
-            self.logger.error(str(v))
+        except ValueError:
             value = -1
     
         return value
@@ -60,7 +59,7 @@ class CoinMarketParser:
         soup = BeautifulSoup(page, "html.parser")
         table = soup.find("table", {"class": "table"})
         data_rows = []
-        
+    
         for row in table.findAll("tr")[1:]:
             row_dict = {}
             cells = row.findAll("td")
@@ -83,13 +82,13 @@ class CoinMarketParser:
         
         return json.loads(str(soup))
     
-    def add_historical(self, data_row):
+    def add_historical(self, data_row, temp_file, table, header):
         
-        self.app_sql.insert_historical_data(data_row)
+        self.app_sql.insert_historical_data(data_row, temp_file, table, header)
         
-    def delete_historical(self, ticker):
+    def delete_historical(self, ticker, table):
         
-        self.app_sql.delete_from_historical(ticker)
+        self.app_sql.delete_from_historical(ticker, table)
         
     def create_status(self, status_dict):
         

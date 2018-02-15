@@ -23,6 +23,11 @@ class TestCoinMarketParser(unittest.TestCase):
         start = "20180201"
         end = "20180208"
         current_date = datetime.datetime.now()
+        
+        historical_header = ["ticker", "close_date", "day_open", "daily_high", "daily_low", "day_close", "volume_trade"]
+        rolling_header = ["ticker", "close_date", "rsi", "std_dev"]
+        hist_table_name = "historical_trade_data"
+        rolling_table = "historical_rolling"
 
         test_ticker = "BTC"
 
@@ -39,7 +44,7 @@ class TestCoinMarketParser(unittest.TestCase):
         
         hist_data = coin_market_parser.parse_historical_range(currency, test_ticker, start, end)
         ticker_data = coin_market_parser.parse_ticker_data("bitcoin")
-        coin_market_parser.add_historical(hist_data)
+        coin_market_parser.add_historical(hist_data, "temp_hist.csv", hist_table_name, historical_header)
         
         self.assertEqual(hist_data[0]["day_open"], 7637.86, "Open price for february 8th")
         self.assertEqual(ticker_data[0]["id"], "bitcoin", "Ticker from api should be bitcoin")
@@ -54,12 +59,12 @@ class TestCoinMarketParser(unittest.TestCase):
         new_end = new_end.strftime("%Y%m%d")
         
         new_hist = coin_market_parser.parse_historical_range("bitcoin", test_ticker, new_start, new_end)
-        coin_market_parser.add_historical(new_hist)
+        coin_market_parser.add_historical(new_hist, "temp_hist2.csv", hist_table_name, historical_header)
         
         new_date = coin_market_parser.check_latest_date(test_ticker, "historical_trade_data")[0]["close"].strftime("%Y%m%d")
         self.assertEqual(new_end, new_date, "latest entry in the db should be udpated")
         
-        coin_market_parser.delete_historical(test_ticker)
+        coin_market_parser.delete_historical(test_ticker, "historical_trade_data")
         coin_market_parser.delete_status(test_ticker)
         app_sql.close()
         

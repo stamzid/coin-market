@@ -27,33 +27,30 @@ create table historical_trade_data (
 
 create unique index historical_trade_idx on historical_trade_data(ticker, close_date);
 
-create table historical_rolling_stats(
+create table historical_rolling(
   ticker text references currency_status(coin_ticker),
   close_date timestamp not null,
-  mean_intraday_returns numeric,
   rsi numeric,
   std_dev numeric,
   primary key (ticker, close_date)
 );
 
-create unique index historical_rolling_idx on historical_trade_data(ticker, close_date);
+create unique index historical_rolling_idx on historical_rolling(ticker, close_date);
 
-create table extreme_performers(
+create table period_return(
   ticker text references currency_status(coin_ticker),
   close_date timestamp not null,
-  gainers text not null,
-  losers text not null,
+  period_return numeric,
   primary key (ticker, close_date)
 );
 
-create unique index extreme_performers_idx on historical_trade_data(ticker, close_date);
+create unique index period_return_idx on historical_trade_data(ticker, close_date);
 
-create table coin_relative_percentile(
-  ticker text references currency_status(coin_ticker),
+create table returns_ranking(
   close_date timestamp not null,
-  five_day_return numeric,
-  percentile int,
-  primary key (ticker, close_date)
+  gainers text references currency_status(coin_ticker),
+  losers text references currency_status(coin_ticker) ,
+  primary key (close_date, gainers, losers)
 );
 
-create unique index relative_percentile_idx on historical_trade_data(ticker, close_date);
+create unique index returns_rank_idx on returns_ranking(close_date, gainers, losers);

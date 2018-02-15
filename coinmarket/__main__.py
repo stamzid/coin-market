@@ -1,6 +1,7 @@
 from coinmarket.models import *
 from coinmarket.application_sql import ApplicationSql
 from coinmarket.coin_market_parser import CoinMarketParser
+from coinmarket.coin_statistics import CoinStatistics
 import json
 import ssl
 from urllib import request
@@ -9,13 +10,18 @@ import pandas as pd
 import datetime
 
 
-GLOBAL_START = "20130428"
+GLOBAL_START = "20170101"
 GLOBAL_END = datetime.datetime.strftime(datetime.datetime.now(), "%Y%m%d")
 RAW_TABLE = "historical_trade_data"
 STATUS_TABLE = "currency_status"
-ROLLING_TABLE = "historical_rolling_stats"
-EXTREME_TABLE = "extreme_performer"
-PERCENTILE_TABLE = "coin_relative_percentile"
+ROLLING_TABLE = "historical_rolling"
+RANK_TABLE  = "returns_ranking"
+RETURN_TABLE = "period_return"
+
+historical_header = ["ticker", "close_date", "day_open", "daily_high", "daily_low", "day_close", "volume_trade"]
+rolling_header = ["ticker", "close_date", "rsi", "std_dev"]
+period_header = ["ticker", "close_date", "period_return"]
+rank_header = ["close_date, gainers, losers"]
 
 
 def url_data_provider(page_url):
@@ -62,8 +68,15 @@ def trade_data_processor(coin_parser, coin_dict, logger):
         start = GLOBAL_START
         
     hist_trade_data = coin_parser.parse_historical_range(coin_dict["slug"], coin_dict["symbol"], start, GLOBAL_END)
-    coin_parser.add_historical(hist_trade_data)
+    coin_parser.add_historical(hist_trade_data, "temp_csv_hist.csv", RAW_TABLE, historical_header)
     data_frame = pd.DataFrame(hist_trade_data)
+    
+    coin_statistics = CoinStatistics(data_frame, coin_dict["symbol"], logger)
+    rolling_frame = coin_statistics.historical_rolling_stats()
+    returns = coin_statistics.rolling_returns()
+    
+    coin_parser.add_historical(rolling_frame.T.to_dict().values(), "temp_rolling.csv", ROLLING_TABLE, rolling_header)
+    coin_parser.add_historical(returns.T.to_dict().values(), "temp_returns.csv", RETURN_TABLE, period_header)
 
 
 def module_runner(config, coin_list, logger):
