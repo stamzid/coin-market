@@ -40,6 +40,8 @@ Upon completion of the run the data are stored in the following tables:
 `top_ranking` -> Contains top 5 tickers/ symbols evaluated period_returns.
 `bottom_ranking` -> Contains bottom 5 symbols for the aforementioned metric.
 
+deactivate the virtualenv while exiting.
+
 # Improvements
 
 - There are rooms for improvment in this design. Currently, this pipeline is only scraping daily data from a website. If the data is coming from a static source then this can be easily scaled by deploying this to multiple server instances. The underlying assumption here is that the source is a webpage like coinmarket. For dynamic data sources / streams, there needs to be a layer added on top of the existing architecture. Python libraries like spark streaming and/ or asynchronous request handling libraries will be required. The storage needs to be improved to deal with big data. Currently, this is designed to use a postgreql host. For larger storages the same schemas can be used on AWS services such as Athena for faster query and transaction.
