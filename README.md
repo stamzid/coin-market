@@ -39,3 +39,11 @@ Upon completion of the run the data are stored in the following tables:
 `period_returns` -> contains n period rolling return on close values. Right now n is defaulted to 5 which can be changed by       chaning the variable `top_n` in `coinmarket/__main__.py`.
 `top_ranking` -> Contains top 5 tickers/ symbols evaluated period_returns.
 `bottom_ranking` -> Contains bottom 5 symbols for the aforementioned metric.
+
+# Improvements
+
+- There are rooms for improvment in this design. Currently, this pipeline is only scraping daily data from a website. If the data is coming from a static source then this can be easily scaled by deploying this to multiple server instances. The underlying assumption here is that the source is a webpage like coinmarket. For dynamic data sources / streams, there needs to be a layer added on top of the existing architecture. Python libraries like spark streaming and/ or asynchronous request handling libraries will be required. The storage needs to be improved to deal with big data. Currently, this is designed to use a postgreql host. For larger storages the same schemas can be used on AWS services such as Athena for faster query and transaction.
+
+- Assuming this will be deployed on a cloud instance, the program needs to be modified to be run as a service and will need to be triggered by using REST requests / scheduled by using scheduling services such as chron. Alternatively, for event driven pipeline, AWS lambda could possibly come in handy. The service needs to have the capability to reboot in the events of failure and proper logging of the pre-failure and failure state needs to be incorporated. There are services and tools such Kibana or slack integration/ email notification could be useful for this.
+
+- For very large data systems, I would potentially divide the pipeline in two environments. For initial fetching and distributing workload I would prefer to use Scala for it's concurrent features such as Actor Model. Once the raw data in the system, then we can use event driven python stats/ numpy libraries for modelling and calculating statistic.
