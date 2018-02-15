@@ -96,7 +96,7 @@ class CoinMarketParser:
         
     def get_currency_status(self, ticker):
         
-        self.app_sql.get_currency_status(ticker)
+        return self.app_sql.get_currency_status(ticker)
         
     def update_status(self, ticker, timestamp):
         
@@ -105,3 +105,7 @@ class CoinMarketParser:
     def delete_status(self, ticker):
         
         self.app_sql.delete_currency_status(ticker)
+        
+    def get_all_historical(self, ticker):
+        
+        return self.app_sql.get_all_historical(ticker)

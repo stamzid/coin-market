@@ -98,7 +98,9 @@ class ApplicationSql:
         except psycopg2.Error as e:
             self.conn.rollback()
             self.logger.error(str(e))
-    
+            self.logger.info("Trying update")
+            self.update_currency_status(status_dict["coin_ticker"], status_dict["last_update"], status_dict["rank"])
+            
     def update_currency_status(self, ticker, time_stamp, rank):
         
         update_dict = {
@@ -133,6 +135,19 @@ class ApplicationSql:
         except psycopg2.Error as e:
             self.conn.rollback()
             self.logger.error(str(e))
+            
+    def get_all_historical(self, ticker):
+        
+        ticker_dict = {"ticker": ticker}
+        try:
+            self.cursor.execute("""SELECT ticker as ticker, close_date as close_date, day_open as day_open,
+                day_close as day_close, daily_high as daily_high, daily_low as daily_low, volume_trade as volume_trade
+                FROM historical_trade_data
+                ;""", ticker_dict)
+            return self.cursor.fetchall()
+        except psycopg2.Error:
+            self.conn.rollback()
+            self.logger.error("failed to get historical data for ticker: "+str(ticker))
             
     def insert_historical_data(self, data_row, temp_file, table, header):
     

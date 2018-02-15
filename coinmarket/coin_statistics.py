@@ -72,12 +72,12 @@ class CoinStatistics:
     
         return_frame = pd.DataFrame()
     
-        return_frame["close_date"] = self.data_frame["close_date"][self.size - 1:n - 1:-1]
+        return_frame["close_date"] = self.data_frame["close_date"][:self.size-n]
         return_frame["rsi"] = rsi_index
         return_frame["std_dev"] = daily_std
         return_frame["ticker"] = [self.ticker] * (self.size - n)
-    
-        return return_frame
+        
+        return return_frame.dropna()
     
     def rolling_returns(self, n=5):
     
@@ -94,8 +94,8 @@ class CoinStatistics:
             returns.append(period_return)
             
         return_frame = pd.DataFrame()
-        return_frame["close_date"] = self.data_frame["close_date"][self.size - 1:n - 1:-1]
+        return_frame["close_date"] = self.data_frame["close_date"][:self.size - n]
         return_frame["period_return"] = returns
         return_frame["ticker"] = [self.ticker] * (self.size - n)
-    
-        return return_frame
+        
+        return return_frame.dropna()

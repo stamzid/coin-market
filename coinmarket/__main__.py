@@ -9,8 +9,7 @@ from bs4 import BeautifulSoup
 import pandas as pd
 import datetime
 
-
-GLOBAL_START = "20130428"
+GLOBAL_START = "20170101"
 GLOBAL_END = datetime.datetime.strftime(datetime.datetime.now(), "%Y%m%d")
 RAW_TABLE = "historical_trade_data"
 STATUS_TABLE = "currency_status"
@@ -53,33 +52,73 @@ def coin_selector(all_coins, required_coins):
     return coin_select
 
 
+def dict_row_to_list(dict_row):
+    
+    data_rows = []
+
+    for row in dict_row:
+        
+        row_dict = dict()
+        row_dict["ticker"] = row["ticker"]
+        row_dict["close_date"] = row["close_date"]
+        # datetime.datetime.strptime(row["close_date"], "%b %d, %Y").strftime("%Y-%m-%d")
+        row_dict["day_open"] = float(row["day_open"])
+        row_dict["daily_high"] = float(row["daily_high"])
+        row_dict["daily_low"] = float(row["daily_low"])
+        row_dict["day_close"] = float(row["day_close"])
+        row_dict["volume_trade"] = int(row["volume_trade"])
+        data_rows.append(row_dict)
+    
+    return data_rows
+
+
 def trade_data_processor(coin_parser, coin_dict, logger):
     
     logger.info("Processing Raw Historical Data")
     try:
         logger.info("Checking if ticker already existed in the db")
-        status_dict = coin_parser.get_currency_status(coin_dict["symbol"])
-        status_dict["name"]
         latest_date = coin_parser.check_latest_date(coin_dict["symbol"], RAW_TABLE)
+        logger.info("Latest date list: " + str(latest_date))
         try:
-            start = latest_date[0]["close"].strftime("%Y%m%d")
-        except IndexError:
-            logger.error("Unknown error, ticker will be skipped, manually check db for ticker: " + str(coin_dict["symbol"]))
-            return
-    except TypeError:
+            start = latest_date[0]["close"] + datetime.timedelta(days=1)
+            start_str = start.strftime("%Y%m%d")
+            logger.info("Adding data starting from date: "+str(start))
+            hist_trade_data = coin_parser.parse_historical_range(coin_dict["slug"], coin_dict["symbol"], start_str,
+                                                                 GLOBAL_END)
+            coin_parser.add_historical(hist_trade_data, "temp_csv_hist.csv", RAW_TABLE, historical_header)
+            all_history_rows = coin_parser.get_all_historical(coin_dict["symbol"])
+            all_history = dict_row_to_list(all_history_rows)
+            
+            data_frame = pd.DataFrame(all_history)
+
+            coin_parser.delete_historical(coin_dict["symbol"], ROLLING_TABLE)
+            coin_parser.delete_historical(coin_dict["symbol"], RETURN_TABLE)
+
+            coin_statistics = CoinStatistics(data_frame, coin_dict["symbol"], logger)
+            rolling_frame = coin_statistics.historical_rolling_stats()
+            returns = coin_statistics.rolling_returns()
+
+            coin_parser.add_historical(rolling_frame.T.to_dict().values(), "temp_rolling.csv", ROLLING_TABLE,
+                                       rolling_header)
+            coin_parser.add_historical(returns.T.to_dict().values(), "temp_returns.csv", RETURN_TABLE, period_header)
+        except ValueError:
+            logger.info("Already latest data in the db")
+    except IndexError:
         logger.info("Ticker does not exist in db, will load since beginning of time")
-        start = GLOBAL_START
         
-    hist_trade_data = coin_parser.parse_historical_range(coin_dict["slug"], coin_dict["symbol"], start, GLOBAL_END)
-    coin_parser.add_historical(hist_trade_data, "temp_csv_hist.csv", RAW_TABLE, historical_header)
-    data_frame = pd.DataFrame(hist_trade_data)
-    
-    coin_statistics = CoinStatistics(data_frame, coin_dict["symbol"], logger)
-    rolling_frame = coin_statistics.historical_rolling_stats()
-    returns = coin_statistics.rolling_returns()
-    
-    coin_parser.add_historical(rolling_frame.T.to_dict().values(), "temp_rolling.csv", ROLLING_TABLE, rolling_header)
-    coin_parser.add_historical(returns.T.to_dict().values(), "temp_returns.csv", RETURN_TABLE, period_header)
+        hist_trade_data = coin_parser.parse_historical_range(coin_dict["slug"], coin_dict["symbol"], GLOBAL_START, GLOBAL_END)
+        coin_parser.add_historical(hist_trade_data, "temp_csv_hist.csv", RAW_TABLE, historical_header)
+        data_frame = pd.DataFrame(hist_trade_data)
+        
+        coin_parser.delete_historical(coin_dict["symbol"], ROLLING_TABLE)
+        coin_parser.delete_historical(coin_dict["symbol"], RETURN_TABLE)
+        
+        coin_statistics = CoinStatistics(data_frame, coin_dict["symbol"], logger)
+        rolling_frame = coin_statistics.historical_rolling_stats()
+        returns = coin_statistics.rolling_returns()
+        
+        coin_parser.add_historical(rolling_frame.T.to_dict().values(), "temp_rolling.csv", ROLLING_TABLE, rolling_header)
+        coin_parser.add_historical(returns.T.to_dict().values(), "temp_returns.csv", RETURN_TABLE, period_header)
 
 
 def top_list_builder(cursor_rows):
@@ -146,6 +185,9 @@ def module_runner(config, coin_list, logger):
         coin_parser.create_status(status_dict)
         trade_data_processor(coin_parser,  coin_dict, logger)
 
+    logger.info("Calculating Rankings")
+    main_sql.delete_from_rankings(TOP_TABLE)
+    main_sql.delete_from_rankings(BOTTOM_TABLE)
     toprank = main_sql.get_top_ranking()
     top_frame = pd.DataFrame(top_list_builder(toprank)).groupby('close_date').head(top_n)
     bottomrank = main_sql.get_bottom_ranking()
